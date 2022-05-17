@@ -44,6 +44,7 @@ import (
 
 const (
 	gomockImportPath = "github.com/golang/mock/gomock"
+	goerrors         = "github.com/bhbosman/gocommon/errors"
 )
 
 var (
@@ -60,9 +61,9 @@ var (
 	selfPackage     = flag.String("self_package", "", "The full package import path for the generated code. The purpose of this flag is to prevent import cycles in the generated code by trying to include its own package. This can happen if the mock's package is set to one of its inputs (usually the main one) and the output is stdio so mockgen cannot detect the final output package. Setting this flag will then tell mockgen which import to exclude.")
 	writePkgComment = flag.Bool("write_package_comment", true, "Writes package documentation comment (godoc) if true.")
 	copyrightFile   = flag.String("copyright_file", "", "Copyright file used to add copyright header")
-
-	debugParser = flag.Bool("debug_parser", false, "Print out parser results only.")
-	showVersion = flag.Bool("version", false, "Print version.")
+	debugParser     = flag.Bool("debug_parser", false, "Print out parser results only.")
+	showVersion     = flag.Bool("version", false, "Print version.")
+	generateWhat    = flag.String("generateWhat", "mockgen", "What to generate")
 )
 
 func main() {
@@ -282,18 +283,23 @@ func (g *generator) Generate(pkg *model.Package, outputPkgName string, outputPac
 	g.p("")
 
 	// Get all required imports, and generate unique names for them all.
-	im := pkg.Imports()
-	im[gomockImportPath] = true
+	im := pkg.Imports(*generateWhat)
 
-	// Only import reflect if it's used. We only use reflect in mocked methods
-	// so only import if any of the mocked interfaces have methods.
-	for _, intf := range pkg.Interfaces {
-		if len(intf.Methods) > 0 {
-			im["reflect"] = true
-			break
+	if *generateWhat == "mockgen" {
+		im[gomockImportPath] = true
+
+		// Only import reflect if it's used. We only use reflect in mocked methods
+		// so only import if any of the mocked interfaces have methods.
+		for _, intf := range pkg.Interfaces {
+			if len(intf.Methods) > 0 {
+				im["reflect"] = true
+				break
+			}
 		}
-	}
+	} else {
+		im[goerrors] = true
 
+	}
 	// Sort keys to make import alias generation predictable
 	sortedPaths := make([]string, len(im))
 	x := 0
@@ -354,8 +360,14 @@ func (g *generator) Generate(pkg *model.Package, outputPkgName string, outputPac
 	g.p(")")
 
 	for _, intf := range pkg.Interfaces {
-		if err := g.GenerateMockInterface(intf, outputPackagePath); err != nil {
-			return err
+		if *generateWhat == "mockgen" {
+			if err := g.GenerateMockInterface(intf, outputPackagePath); err != nil {
+				return err
+			}
+		} else {
+			if err := g.GenerateChannelInterface(intf, outputPackagePath); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -457,23 +469,26 @@ func (g *generator) GenerateMockMethods(mockType string, intf *model.Interface, 
 	}
 }
 
-func makeArgString(argNames, argTypes []string) string {
+func makeArgStrings(allTypeDecl bool, argNames, argTypes []string) []string {
 	args := make([]string, len(argNames))
 	for i, name := range argNames {
 		// specify the type only once for consecutive args of the same type
-		if i+1 < len(argTypes) && argTypes[i] == argTypes[i+1] {
+		if !allTypeDecl && i+1 < len(argTypes) && argTypes[i] == argTypes[i+1] {
 			args[i] = name
 		} else {
 			args[i] = name + " " + argTypes[i]
 		}
 	}
-	return strings.Join(args, ", ")
+	return args
+}
+func makeArgString(argNames, argTypes []string) string {
+	return strings.Join(makeArgStrings(false, argNames, argTypes), ", ")
 }
 
 // GenerateMockMethod generates a mock method implementation.
 // If non-empty, pkgOverride is the package in which unqualified types reside.
 func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOverride, shortTp string) error {
-	argNames := g.getArgNames(m)
+	argNames := g.getArgNames("", m)
 	argTypes := g.getArgTypes(m, pkgOverride)
 	argString := makeArgString(argNames, argTypes)
 
@@ -538,7 +553,7 @@ func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOver
 }
 
 func (g *generator) GenerateMockRecorderMethod(mockType string, m *model.Method, shortTp string) error {
-	argNames := g.getArgNames(m)
+	argNames := g.getArgNames("", m)
 
 	var argString string
 	if m.Variadic == nil {
@@ -591,21 +606,21 @@ func (g *generator) GenerateMockRecorderMethod(mockType string, m *model.Method,
 	return nil
 }
 
-func (g *generator) getArgNames(m *model.Method) []string {
+func (g *generator) getArgNames(prefix string, m *model.Method) []string {
 	argNames := make([]string, len(m.In))
 	for i, p := range m.In {
 		name := p.Name
 		if name == "" || name == "_" {
 			name = fmt.Sprintf("arg%d", i)
 		}
-		argNames[i] = name
+		argNames[i] = fmt.Sprintf("%v%v", prefix, name)
 	}
 	if m.Variadic != nil {
 		name := m.Variadic.Name
 		if name == "" {
 			name = fmt.Sprintf("arg%d", len(m.In))
 		}
-		argNames = append(argNames, name)
+		argNames = append(argNames, fmt.Sprintf("%v%v", prefix, name))
 	}
 	return argNames
 }
@@ -649,6 +664,18 @@ func (g *generator) Output() []byte {
 		log.Fatalf("Failed to format generated source code: %s\n%s", err, g.buf.String())
 	}
 	return src
+}
+
+func (g *generator) getOutArgNames(m *model.Method) []string {
+	argNames := make([]string, len(m.Out))
+	for i, p := range m.Out {
+		name := p.Name
+		if name == "" || name == "_" {
+			name = fmt.Sprintf("Args%d", i)
+		}
+		argNames[i] = fmt.Sprintf("data.%v", name)
+	}
+	return argNames
 }
 
 // createPackageMap returns a map of import path to package name
