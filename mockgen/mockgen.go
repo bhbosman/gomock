@@ -488,7 +488,7 @@ func makeArgString(argNames, argTypes []string) string {
 // GenerateMockMethod generates a mock method implementation.
 // If non-empty, pkgOverride is the package in which unqualified types reside.
 func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOverride, shortTp string) error {
-	argNames := g.getArgNames("", m)
+	argNames := g.getArgNames("", "", m)
 	argTypes := g.getArgTypes(m, pkgOverride)
 	argString := makeArgString(argNames, argTypes)
 
@@ -553,7 +553,7 @@ func (g *generator) GenerateMockMethod(mockType string, m *model.Method, pkgOver
 }
 
 func (g *generator) GenerateMockRecorderMethod(mockType string, m *model.Method, shortTp string) error {
-	argNames := g.getArgNames("", m)
+	argNames := g.getArgNames("", "", m)
 
 	var argString string
 	if m.Variadic == nil {
@@ -606,7 +606,7 @@ func (g *generator) GenerateMockRecorderMethod(mockType string, m *model.Method,
 	return nil
 }
 
-func (g *generator) getArgNames(prefix string, m *model.Method) []string {
+func (g *generator) getArgNames(prefix string, varadicPostFix string, m *model.Method) []string {
 	argNames := make([]string, len(m.In))
 	for i, p := range m.In {
 		name := p.Name
@@ -620,7 +620,7 @@ func (g *generator) getArgNames(prefix string, m *model.Method) []string {
 		if name == "" {
 			name = fmt.Sprintf("arg%d", len(m.In))
 		}
-		argNames = append(argNames, fmt.Sprintf("%v%v", prefix, name))
+		argNames = append(argNames, fmt.Sprintf("%v%v%v", prefix, name, varadicPostFix))
 	}
 	return argNames
 }

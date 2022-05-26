@@ -27,7 +27,7 @@ func (g *generator) GenerateChannelReceivedEvent(intf *model.Interface, outputPa
 	g.p("switch v := event.(type) {")
 
 	for _, m := range intf.Methods {
-		argNames := g.getArgNames("v.inData.", m)
+		argNames := g.getArgNames("v.inData.", "...", m)
 
 		argOutNames := g.getOutArgNames(m)
 
@@ -59,7 +59,7 @@ func (g *generator) GenerateChannelMethods(intf *model.Interface, outputPackageP
 		g.p("// Interface %v, Method: %v ", intf.Name, m.Name)
 		name := fmt.Sprintf("%v%v", intf.Name, m.Name)
 
-		argNames := g.getArgNames("", m)
+		argNames := g.getArgNames("", "", m)
 		argTypes := g.getArgTypes(m, outputPackagePath)
 		argString := makeArgString(argNames, argTypes)
 
@@ -98,9 +98,21 @@ func (g *generator) GenerateCallFunction(
 	g.p("return %vOut{}, context.Err()", name)
 	g.p("}")
 	if len(argNames) == 0 {
-		g.p("data := New%v(waitToComplete%v)", name, strings.Join(argNames, ","))
+		g.p("data := New%v(waitToComplete)", name)
 	} else {
-		g.p("data := New%v(waitToComplete,%v)", name, strings.Join(argNames, ","))
+		sss := ""
+		for i, argName := range argNames {
+			s := argTypes[i]
+			if len(s) > 3 && s[0:3] == "..." {
+				sss = fmt.Sprintf("%v, %v...", sss, argName)
+			} else {
+				sss = fmt.Sprintf("%v, %v", sss, argName)
+
+			}
+		}
+
+		g.p("data := New%v(waitToComplete%v)", name, sss)
+
 	}
 
 	g.p("if waitToComplete {")
@@ -142,9 +154,17 @@ func (g *generator) GenerateStructIn(
 	argNames []string,
 	argTypes []string) error {
 	g.p("type %vIn struct{", name)
-	argStrings := makeArgStrings(true, argNames, argTypes)
-	for _, s := range argStrings {
-		g.p("%v", s)
+	//argStrings := makeArgStrings(true, argNames, argTypes)
+	//for _, s := range argStrings {
+	//	g.p("%v", s)
+	//}
+	for i, argName := range argNames {
+		s := argTypes[i]
+		if len(s) > 3 && s[0:3] == "..." {
+			s = fmt.Sprintf("[]%v", s[3:])
+		}
+		g.p("%v %v", argName, s)
+
 	}
 	g.p("}")
 	g.p("")
