@@ -364,6 +364,9 @@ func (g *generator) Generate(pkg *model.Package, outputPkgName string, outputPac
 			if err := g.GenerateMockInterface(intf, outputPackagePath); err != nil {
 				return err
 			}
+			if err := g.GenerateMockExtensions(intf, outputPackagePath); err != nil {
+				return err
+			}
 		} else {
 			if err := g.GenerateChannelInterface(intf, outputPackagePath); err != nil {
 				return err
