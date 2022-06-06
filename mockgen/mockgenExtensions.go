@@ -59,16 +59,16 @@ func (g *generator) GenerateMockMethodExtensions(mockType string, m *model.Metho
 		g.p("")
 
 		g.p("// 1")
-		g.p("func (%s *%vMockRecorder%v) On%vDoAndReturnDefault(\n\t%v interface{}, \n\tf func(%v)%v) *gomock.Call {",
-			idRecv, mockType, shortTp, m.Name, strings.Join(argNames, ","), argString, retString)
-		g.p("return %v.\n\t%v(%v).\n\tDoAndReturn(f)", idRecv, m.Name, strings.Join(argNames, ","))
+		g.p("func (%s *%vMockRecorder%v) On%vDoAndReturnDefault(\n\tf func(%v)%v) *gomock.Call {",
+			idRecv, mockType, shortTp, m.Name, argString, retString)
+		g.p("return %v.\n\t%v(%v).\n\tDoAndReturn(f)", idRecv, m.Name, defaultArgsAsString)
 		g.p("}")
 		g.p("")
 
 		g.p("// 1")
-		g.p("func (%s *%vMockRecorder%v) On%vDoDefault(\n\t%v interface{}, \n\tf func(%v)) *gomock.Call {",
-			idRecv, mockType, shortTp, m.Name, strings.Join(argNames, ","), argString)
-		g.p("return %v.\n\t%v(%v).\n\tDo(f)", idRecv, m.Name, strings.Join(argNames, ","))
+		g.p("func (%s *%vMockRecorder%v) On%vDoDefault(\n\tf func(%v)) *gomock.Call {",
+			idRecv, mockType, shortTp, m.Name, argString)
+		g.p("return %v.\n\t%v(%v).\n\tDo(f)", idRecv, m.Name, defaultArgsAsString)
 		g.p("}")
 		g.p("")
 
