@@ -10,6 +10,14 @@ func (g *generator) GenerateMockMethodExtensions(mockType string, m *model.Metho
 	argNames := g.getArgNames("", "", m)
 	g.p("// argNames: %v", argNames)
 
+	defaultArgs := make([]string, len(argNames))
+	for i := 0; i < len(defaultArgs); i++ {
+		defaultArgs[i] = "gomock.Any()"
+	}
+	g.p("// defaultArgs: %v", defaultArgs)
+	defaultArgsAsString := strings.Join(defaultArgs, ",")
+	g.p("// defaultArgsAsString: %v", defaultArgsAsString)
+
 	argTypes := g.getArgTypes(m, pkgOverride)
 	g.p("// argTypes: %v", argTypes)
 	argString := makeArgString(argNames, argTypes)
@@ -45,6 +53,20 @@ func (g *generator) GenerateMockMethodExtensions(mockType string, m *model.Metho
 
 		g.p("// 1")
 		g.p("func (%s *%vMockRecorder%v) On%vDo(\n\t%v interface{}, \n\tf func(%v)) *gomock.Call {",
+			idRecv, mockType, shortTp, m.Name, strings.Join(argNames, ","), argString)
+		g.p("return %v.\n\t%v(%v).\n\tDo(f)", idRecv, m.Name, strings.Join(argNames, ","))
+		g.p("}")
+		g.p("")
+
+		g.p("// 1")
+		g.p("func (%s *%vMockRecorder%v) On%vDoAndReturnDefault(\n\t%v interface{}, \n\tf func(%v)%v) *gomock.Call {",
+			idRecv, mockType, shortTp, m.Name, strings.Join(argNames, ","), argString, retString)
+		g.p("return %v.\n\t%v(%v).\n\tDoAndReturn(f)", idRecv, m.Name, strings.Join(argNames, ","))
+		g.p("}")
+		g.p("")
+
+		g.p("// 1")
+		g.p("func (%s *%vMockRecorder%v) On%vDoDefault(\n\t%v interface{}, \n\tf func(%v)) *gomock.Call {",
 			idRecv, mockType, shortTp, m.Name, strings.Join(argNames, ","), argString)
 		g.p("return %v.\n\t%v(%v).\n\tDo(f)", idRecv, m.Name, strings.Join(argNames, ","))
 		g.p("}")
@@ -99,11 +121,6 @@ func (g *generator) GenerateMockMethodExtensions(mockType string, m *model.Metho
 				idRecv, mockType, shortTp, m.Name, strings.Join(retArgs, ","))
 			g.p("return %v.\n\t%v(%v).\n\tReturn(%v)", idRecv, m.Name, strings.Join(argNames, ","), strings.Join(retNames, ","))
 			g.p("}")
-
-			//g.p("func Extend%v%vReturn(c *gomock.Call, %v) *gomock.Call{", mockType, m.Name, strings.Join(retArgs, ","))
-			//g.p("return c.Return(%v)", strings.Join(retNames, ","))
-			//g.p("}")
-			//g.p("")
 		}
 
 	}
