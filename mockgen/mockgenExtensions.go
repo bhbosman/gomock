@@ -89,6 +89,13 @@ func (g *generator) GenerateMockMethodExtensions(mockType string, m *model.Metho
 				idRecv, mockType, shortTp, m.Name, strings.Join(argNames, ","), strings.Join(retArgs, ","))
 			g.p("return %v.\n\t%v(%v).\n\tReturn(%v)", idRecv, m.Name, strings.Join(argNames, ","), strings.Join(retNames, ","))
 			g.p("}")
+
+			g.p("// 1")
+			g.p("func (%s *%vMockRecorder%v) On%vReturnDefault(\n\t%v) *gomock.Call {",
+				idRecv, mockType, shortTp, m.Name, strings.Join(retArgs, ","))
+			g.p("return %v.\n\t%v(%v).\n\tReturn(%v)", idRecv, m.Name, defaultArgsAsString, strings.Join(retNames, ","))
+			g.p("}")
+
 		}
 
 	} else {
