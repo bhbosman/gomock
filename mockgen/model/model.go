@@ -43,9 +43,13 @@ func (pkg *Package) Print(w io.Writer) {
 }
 
 // Imports returns the imports needed by the Package as a set of import paths.
-func (pkg *Package) Imports() map[string]bool {
+func (pkg *Package) Imports(generateWhat string) map[string]bool {
 	im := make(map[string]bool)
 	for _, intf := range pkg.Interfaces {
+		if generateWhat != "mockgen" {
+			intf.NameType.addImports(im)
+			im["fmt"] = true
+		}
 		intf.addImports(im)
 		for _, tp := range intf.TypeParams {
 			tp.Type.addImports(im)
@@ -57,6 +61,8 @@ func (pkg *Package) Imports() map[string]bool {
 // Interface is a Go interface.
 type Interface struct {
 	Name       string
+	NameType   Type
+	Comment    string
 	Methods    []*Method
 	TypeParams []*Parameter
 }
@@ -341,8 +347,14 @@ func InterfaceFromInterfaceType(it reflect.Type) (*Interface, error) {
 	if it.Kind() != reflect.Interface {
 		return nil, fmt.Errorf("%v is not an interface", it)
 	}
-	intf := &Interface{}
-
+	intf := &Interface{
+		Comment: "A Comment",
+	}
+	tt, err := typeFromType(it)
+	if err != nil {
+		return nil, err
+	}
+	intf.NameType = tt
 	for i := 0; i < it.NumMethod(); i++ {
 		mt := it.Method(i)
 		// TODO: need to skip unexported methods? or just raise an error?
