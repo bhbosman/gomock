@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/golang/mock v1.6.0
-	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
 )
 
 //replace github.com/golang/mock => ../../../..
