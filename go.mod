@@ -9,4 +9,5 @@ require (
 
 require (
 	github.com/yuin/goldmark v1.7.8 // indirect
+	golang.org/x/sync v0.12.0 // indirect
 )
